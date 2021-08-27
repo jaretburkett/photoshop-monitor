@@ -11,7 +11,8 @@ const nativeModules = [
   'ffi-napi',
   'robotjs',
   'iconv',
-  'tesseract.js'
+  'tesseract.js',
+  'tesseract.js-core'
 ];
 
 const fixTesseract = () => {
