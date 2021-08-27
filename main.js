@@ -5,19 +5,20 @@ const path = require('path');
 const imageTools = require('./lib/imageTools');
 const {runAction} = require('./lib/actions');
 const phraseActions = require('./lib/phrasesActions');
+const package = require('./package.json');
 
 const tempFolder = path.join(__dirname, 'temp');
 const tempFilePath = path.join(tempFolder, 'activeWindow.png');
 const ocrLogPath = path.join(tempFolder, 'OCR_log.txt');
 
-const maxOCRLogLines = 40;
+const maxOCRLogLines = 500;
 
 // make the temp folder if it does not exist
 if (!fs.existsSync(tempFolder)) {
   fs.mkdirSync(tempFolder);
 }
 
-console.log('**** Ready ****');
+console.log(`Photoshop Monitor v${package.version}\n`);
 
 
 const delay = (ms) => {
