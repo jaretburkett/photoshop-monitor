@@ -6,10 +6,12 @@ const imageTools = require('./lib/imageTools');
 const {runAction} = require('./lib/actions');
 const phraseActions = require('./lib/phrasesActions');
 const package = require('./package.json');
+const photoshop = require('./lib/photoshop');
 
 const tempFolder = path.join(__dirname, 'temp');
 const tempFilePath = path.join(tempFolder, 'activeWindow.png');
 const ocrLogPath = path.join(tempFolder, 'OCR_log.txt');
+
 
 const maxOCRLogLines = 500;
 
@@ -19,7 +21,6 @@ if (!fs.existsSync(tempFolder)) {
 }
 
 console.log(`Photoshop Monitor v${package.version}\n`);
-
 
 const delay = (ms) => {
   return new Promise(resolve => {
@@ -31,15 +32,16 @@ const delay = (ms) => {
 
 
 async function main() {
-  // check active window
-  const winInfo = await activeWindow();
-  // console.log(winInfo);
-  
+  const errorWindow = photoshop.getErrorWindow();
 
   // get a screenshot of active window. 
-  if (winInfo && winInfo.owner && winInfo.owner.name === "Photoshop.exe" && winInfo.bounds) {
-    // if (winInfo.bounds) {
-    const { x, y, width, height } = winInfo.bounds;
+  if (errorWindow) {
+    // bring error window to front
+    errorWindow.bringToTop();
+    // give a second to process that
+    await delay(1000);
+    
+    const { x, y, width, height } = errorWindow.getBounds();
     const img = robot.screen.capture(x, y, width, height);
     // const img = robot.screen.capture();
     await imageTools.saveImage(img, tempFilePath);

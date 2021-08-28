@@ -12,7 +12,9 @@ const nativeModules = [
   'robotjs',
   'iconv',
   'tesseract.js',
-  'tesseract.js-core'
+  'tesseract.js-core',
+  'extract-file-icon',
+  'node-window-manager'
 ];
 
 const fixTesseract = () => {
