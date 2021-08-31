@@ -7,9 +7,16 @@ const phraseActions = require('./lib/phrasesActions');
 const package = require('./package.json');
 const photoshop = require('./lib/photoshop');
 const { writeToLog } = require('./lib/logWriter');
+const child_process = require('child_process');
+const ErrorMonitor = require('./lib/ErrorMonitor');
+
+const maxSecondsInError = 60; // false positives could be any dialog box including initial loading screen, keep in mind.
+const errorMonitor = new ErrorMonitor();
 
 const tempFolder = path.join(__dirname, 'temp');
 const tempFilePath = path.join(tempFolder, 'activeWindow.png');
+
+let photoshopPath = null;
 
 // make the temp folder if it does not exist
 if (!fs.existsSync(tempFolder)) {
@@ -26,59 +33,53 @@ const delay = (ms) => {
   })
 }
 
+const openPhotoShop = () => {
+  try {
+    child_process.exec(`"${photoshopPath}"`);
+  }
+  catch (error) {
+    console.log('ERROR:', error)
+  }
+}
+
+const closePhotoshop = () => {
+  try {
+    return child_process.execSync('taskkill /F /IM Photoshop.exe /T').toString();
+  }
+  catch (error) {
+    console.log('ERROR:', error)
+  }
+}
+
 
 async function main() {
   try {
     const errorWindow = photoshop.getErrorWindow();
-
-    // get a screenshot of active window. 
     if (errorWindow) {
-      // bring error window to front
-      errorWindow.bringToTop();
-      // give a second to process that
-      await delay(1000);
-  
-      const { x, y, width, height } = errorWindow.getBounds();
-      const img = robot.screen.capture(x, y, width, height);
-      // const img = robot.screen.capture();
-      await imageTools.saveImage(img, tempFilePath);
-      const ocrText = await imageTools.findText(tempFilePath);
-  
-      // append to log
-      let logTxt = '\r\n*********** NEW ****************\r\n';
-      logTxt += ocrText;
-      writeToLog(logTxt, 'OCR_log');
-      // run through all phrase actions to see if one matches
-      let PA = null;
-      for (let i = 0; i < phraseActions.length; i++) {
-        for (let p = 0; p < phraseActions[i].phrases.length; p++) {
-          const phrase = phraseActions[i].phrases[p];
-          if (ocrText.toLowerCase().includes(phrase.toLowerCase())) {
-            // we have a match. Put it in the actions
-            PA = phraseActions[i];
-          }
+      // set photoshop path from owner
+      photoshopPath = errorWindow.getOwner().path;
+      errorMonitor.updateStatus(true);
+
+      const secInError = errorMonitor.getSecondsInError();
+      if (secInError > maxSecondsInError) {
+        console.log('Error Detected. Force closing Photoshop.');
+        console.log(closePhotoshop());
+        errorMonitor.clear();
+
+        if (photoshopPath) {
+          await delay(1000);
+          console.log('Reopening Photoshop');
+          openPhotoShop();
         }
       }
-  
-      // see if we need to run actions
-      if (PA) {
-        console.log('Running Action: ' + PA.name);
-        try {
-          errorWindow.bringToTop();
-          await delay(500);
-          await runAction(PA.actions);
-        } catch (e) {
-          console.log(e);
-        }
-      }
-  
     } else {
-      // console.log('Photoshop not active window');
+      errorMonitor.updateStatus(false);
     }
+
   } catch (e) {
     console.log('ERROR: ', e);
   }
-  await delay(10000);
+  await delay(1000);
   main();
 }
 
