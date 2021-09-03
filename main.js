@@ -10,7 +10,6 @@ const { writeToLog } = require('./lib/logWriter');
 const child_process = require('child_process');
 const ErrorMonitor = require('./lib/ErrorMonitor');
 
-const maxSecondsInError = 60; // false positives could be any dialog box including initial loading screen, keep in mind.
 const errorMonitor = new ErrorMonitor();
 
 const tempFolder = path.join(__dirname, 'temp');
@@ -25,6 +24,10 @@ if (!fs.existsSync(tempFolder)) {
 
 console.log(`Photoshop Monitor v${package.version}\n`);
 
+const config = require('./lib/config');
+const maxSecondsInError = config.maxSecondsInError;
+const errorActions = config.errorActions;
+
 const delay = (ms) => {
   return new Promise(resolve => {
     setTimeout(() => {
@@ -33,21 +36,17 @@ const delay = (ms) => {
   })
 }
 
-const openPhotoShop = () => {
+const runConfigAction = async (action) => {
   try {
-    child_process.exec(`"${photoshopPath}"`);
-  }
-  catch (error) {
-    console.log('ERROR:', error)
-  }
-}
-
-const closePhotoshop = () => {
-  try {
-    return child_process.execSync('taskkill /F /IM Photoshop.exe /T').toString();
-  }
-  catch (error) {
-    console.log('ERROR:', error)
+    console.log(`Running action: ${action.name}`);
+    const cmd = action.cmd.split('{photoshopPath}').join(photoshopPath);
+    if(action.sync){
+      return child_process.execSync(cmd).toString();
+    } else {
+      child_process.exec(cmd);
+    }
+  } catch(e) {
+    console.log('ERROR:', e)
   }
 }
 
@@ -62,15 +61,12 @@ async function main() {
 
       const secInError = errorMonitor.getSecondsInError();
       if (secInError > maxSecondsInError) {
-        console.log('Error Detected. Force closing Photoshop.');
-        console.log(closePhotoshop());
-        errorMonitor.clear();
-
-        if (photoshopPath) {
+        console.log('Error Detected. Running Actions');
+        for(let i = 0; i < errorActions.length; i++){
+          await runConfigAction(errorActions[i]);
           await delay(1000);
-          console.log('Reopening Photoshop');
-          openPhotoShop();
         }
+        errorMonitor.clear();
       }
     } else {
       errorMonitor.updateStatus(false);

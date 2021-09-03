@@ -55,6 +55,11 @@ rimraf(outputFolder, {}, () => {
     target: 'windows-x64-14.15.3'
   }).then(() => {
     copyModules();
+    // copy config
+    fs.copyFileSync(
+      path.join(__dirname, 'config.json'),
+      path.join(outputFolder, 'config.json')
+    )
     console.log('success')
   })
 });

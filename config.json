@@ -1,0 +1,15 @@
+{
+  "errorActions": [
+    {
+      "name": "Killing Photoshop",
+      "sync": true,
+      "cmd": "taskkill /F /IM Photoshop.exe /T"
+    },
+    {
+      "name": "Restarting Photoshop",
+      "sync": false,
+      "cmd": "\"{photoshopPath}\""
+    }
+  ],
+  "maxSecondsInError": 60
+}
